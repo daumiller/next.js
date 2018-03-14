@@ -58,7 +58,17 @@ export default async function (dir, options, configuration) {
     )
   }
 
-  await copyPages(nextDir, outDir, buildId)
+  //===== <AKTXYZ>
+  // generate exportList from list of pages
+  var exportList = [];
+  await copyPages(nextDir, outDir, buildId, exportList)
+  var exportHash = exportList.reduce(function (map, obj) {
+    map[obj.page] = obj;
+    return map;
+  }, {});
+  // console.log("EXPORT/LIST ", exportList);
+  // console.log("EXPORT/HASH", exportHash);
+  //===== </AKTXYZ>
 
   // Get the exportPathMap from the `next.config.js`
   if (typeof config.exportPathMap !== 'function') {
@@ -68,8 +78,17 @@ export default async function (dir, options, configuration) {
     )
   }
 
-  const exportPathMap = await config.exportPathMap()
+  //===== <AKTXYZ>
+  // auto generate export list when the next.config.js file returns "auto"
+  // log some stats
+  let exportPathMap = await config.exportPathMap()
+  let exportAuto = !!exportPathMap.auto;
+  if (exportAuto) {
+    exportPathMap = exportHash;
+  }
   const exportPaths = Object.keys(exportPathMap)
+  log(exportAuto ? "  EXPORT/LIST/AUTO" : "  EXPORT/LIST/EXPLICIT/" + exportPaths.length);
+  //===== </AKTXYZ>
 
   // Start the rendering process
   const renderOpts = {
@@ -89,8 +108,9 @@ export default async function (dir, options, configuration) {
     nextExport: true
   }
 
+  //===== <AKTXYZ>
+  // ignore rendering failures
   for (const path of exportPaths) {
-    log(`  exporting path: ${path}`)
 
     const { page, query = {} } = exportPathMap[path]
     const req = { url: path }
@@ -109,9 +129,19 @@ export default async function (dir, options, configuration) {
 
     await mkdirp(baseDir)
 
-    const html = await renderToHTML(req, res, page, query, renderOpts)
-    writeFileSync(htmlFilepath, html, 'utf8')
+    try {
+      const html = await renderToHTML(req, res, page, query, renderOpts)
+      writeFileSync(htmlFilepath, html, 'utf8')
+      log(`  export/path/good: ${path}`)
+    }
+    catch (err) {
+      log(`  export/path/fail: ${path}`)
+    }
   }
+
+  // log some stats
+  log(exportAuto ? "  EXPORT/LIST/AUTO" : "  EXPORT/LIST/EXPLICIT/" + exportPaths.length);
+  //===== </AKTXYZ>
 
   // Add an empty line to the console for the better readability.
   log('')
@@ -149,6 +179,12 @@ function copyPages (nextDir, outDir, buildId) {
       } else {
         destFilePath = join(outDir, '_next', buildId, 'page', relativeFilePath)
       }
+
+      //===== <AKTXYZ>
+      // add page to exportList
+      const exportPath = relativeFilePath.replace(/\\/g, "/").replace(/\.js$/, "");
+      exportList.push({ page: exportPath, query: { title: "" } });
+      //===== </AKTXYZ>
 
       cp(fullFilePath, destFilePath)
         .then(next)
