@@ -152,7 +152,7 @@ export default async function (dir, options, configuration) {
   }
 }
 
-function copyPages (nextDir, outDir, buildId) {
+function copyPages (nextDir, outDir, buildId, exportList) {
   // TODO: do some proper error handling
   return new Promise((resolve, reject) => {
     const nextBundlesDir = join(nextDir, 'bundles', 'pages')
