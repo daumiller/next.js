@@ -14,7 +14,7 @@ export default class PagesPlugin {
       pages.forEach((chunk) => {
         const page = compilation.assets[chunk.name]
         const pageName = MATCH_ROUTE_NAME.exec(chunk.name)[1]
-        let routeName = pageName
+        var routeName = '/' + pageName.replace(/[/\\]?index$/, ''); //===== <AKTXYZ/>
 
         // We need to convert \ into / when we are in windows
         // to get the proper route name
@@ -26,7 +26,22 @@ export default class PagesPlugin {
           routeName = routeName.replace(/\\/g, '/')
         }
 
-        routeName = `/${routeName.replace(/(^|\/)index$/, '')}`
+        //===== <AKTXYZ>
+        // ignore leading ##_
+        // console.log("=====> AKTXYZ/ROUTE1 ", pageName);
+        // console.log("=====> AKTXYZ/ROUTE2 ", routeName);
+        routeName = routeName.replace(/\/\d\d_/, "/").replace(/\/\d\d/, "/");
+        // console.log("=====> AKTXYZ/ROUTE3 ", routeName);
+        // console.log("=====> AKTXYZ/ROUTE4 ", chunk.name, page.source().length);
+        // console.log("=====> AKTXYZ/ROUTEX ", Object.keys(chunk));
+        // console.log("=====> AKTXYZ/ROUTEY ", Object.keys(page));
+        if (pageName.match(/^App/ && pageName.match(/\d\d_/))) {
+          delete compilation.assets[chunk.name];
+          // if (pageName.match(/SigninUserPass/) && pageName.match(/App.User/)) console.log("=====> AKTXYZ/ROUTE6A ", chunk.name);
+          chunk.name = chunk.name.replace(/\d\d_/, '');
+          // if (pageName.match(/SigninUserPass/) && pageName.match(/App.User/)) console.log("=====> AKTXYZ/ROUTE6B ", chunk.name);
+        }
+        //===== </AKTXYZ>
 
         // If there's file named pageDir/index.js
         // We are going to rewrite it as pageDir.js
@@ -38,18 +53,36 @@ export default class PagesPlugin {
           chunk.name = chunk.name.replace(/[/\\]index\.js$/, `.js`)
         }
 
-        const content = page.source()
-        const newContent = `
-          window.__NEXT_REGISTER_PAGE('${routeName}', function() {
-            var comp = ${content}
-            return { page: comp.default }
-          })
-        `
+        //===== <AKTXYZ>
+        // skip if already generated (content contains "nextRegisterPageDone")
+        var content = page.source();
+        var newContent = content;
+        if (!content.match(/nextRegisterPageDone/)) {
+          //console.log("&&&&&&&& PAGESOURCE/1", routeName, pageName, chunk.name);
+          newContent = `
+            nextRegisterPageDone = 1;
+            window.__NEXT_REGISTER_PAGE('${routeName}', function() {
+              var comp = ${content}
+              return { page: comp.default }
+            })
+          `
+        }
+        //console.log("&&&&&&&& PAGESOURCE/2", routeName, pageName, chunk.name);
+        //===== </AKTXYZ>
+
         // Replace the exisiting chunk with the new content
         compilation.assets[chunk.name] = {
           source: () => newContent,
           size: () => newContent.length
         }
+
+        //===== <AKTXYZ>
+        var ttt = (0, _keys2.default)(compilation.assets).filter(function (x) {
+          return x.match(/SigninUserPass/) && x.match(/App.User/);
+        });
+        ttt.unshift('');
+        //console.log("=====> AKTXYZ/CHUNKS ", ttt);
+        //===== </AKTXYZ>
       })
       callback()
     })
