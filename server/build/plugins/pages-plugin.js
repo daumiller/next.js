@@ -75,14 +75,6 @@ export default class PagesPlugin {
           source: () => newContent,
           size: () => newContent.length
         }
-
-        //===== <AKTXYZ>
-        var ttt = (0, _keys2.default)(compilation.assets).filter(function (x) {
-          return x.match(/SigninUserPass/) && x.match(/App.User/);
-        });
-        ttt.unshift('');
-        //console.log("=====> AKTXYZ/CHUNKS ", ttt);
-        //===== </AKTXYZ>
       })
       callback()
     })
